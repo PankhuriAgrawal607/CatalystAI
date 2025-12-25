@@ -1,0 +1,660 @@
+{% extends 'base.html' %}
+
+{% block title %}
+Your Career Coach - Leo 🦁
+{% endblock %}
+
+{% block content %}
+<!-- AOS Animation Library -->
+<link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+
+<!-- SweetAlert2 -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<style>
+  /* --- Modern Variables & Theming --- */
+  :root {
+    --primary-start: #6366f1;
+    --primary-end: #a78bfa;
+    --primary-gradient: linear-gradient(135deg, var(--primary-start), var(--primary-end));
+
+    --glass-bg: rgba(255, 255, 255, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.5);
+    --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+
+    --chat-bg-user: var(--primary-gradient);
+    --chat-bg-bot: #ffffff;
+    --text-user: #ffffff;
+    --text-bot: #1e293b;
+  }
+
+  /* Animated Background */
+  body {
+    background: linear-gradient(120deg, #fdfbfb 0%, #ebedee 100%);
+    min-height: 100vh;
+  }
+
+  .page-wrapper {
+    position: relative;
+    overflow: hidden;
+    padding-bottom: 2rem;
+  }
+
+  /* Background Blobs */
+  .page-wrapper::before {
+    content: '';
+    position: absolute;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, rgba(0, 0, 0, 0) 70%);
+    top: -100px;
+    left: -200px;
+    z-index: -1;
+    animation: floatBlob 10s infinite alternate;
+  }
+
+  .page-wrapper::after {
+    content: '';
+    position: absolute;
+    width: 500px;
+    height: 500px;
+    background: radial-gradient(circle, rgba(167, 139, 250, 0.15) 0%, rgba(0, 0, 0, 0) 70%);
+    bottom: 0;
+    right: -150px;
+    z-index: -1;
+    animation: floatBlob 10s infinite alternate-reverse;
+  }
+
+  @keyframes floatBlob {
+    0% {
+      transform: translate(0, 0);
+    }
+
+    100% {
+      transform: translate(50px, 50px);
+    }
+  }
+
+  /* --- Header --- */
+  .chat-header {
+    text-align: center;
+    margin-bottom: 2rem;
+    position: relative;
+    z-index: 2;
+  }
+
+  .chat-header h2 {
+    font-weight: 800;
+    color: #1e293b;
+    margin-bottom: 0.5rem;
+    letter-spacing: -0.5px;
+  }
+
+  .chat-header .highlight {
+    background: var(--primary-gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+
+  .chat-header p {
+    color: #64748b;
+    font-size: 1.1rem;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  /* Clear button (top-right of header) */
+  .header-actions {
+    position: absolute;
+    right: 1rem;
+    top: 0.5rem;
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  .btn-clear {
+    background: transparent;
+    border: 1px solid rgba(99, 102, 241, 0.12);
+    color: #374151;
+    padding: 0.45rem 0.7rem;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: inline-flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  .btn-clear:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(99, 102, 241, 0.07);
+  }
+
+  /* --- Chat Interface --- */
+  .chat-card {
+    max-width: 900px;
+    margin: 0 auto;
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    border-radius: 24px;
+    box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 280px);
+    min-height: 600px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Chat Body */
+  .chat-body {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: 2rem;
+    scroll-behavior: smooth;
+  }
+
+  /* Scrollbar Styling */
+  .chat-body::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .chat-body::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .chat-body::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+  }
+
+  /* Message Rows */
+  .message-row {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    align-items: flex-end;
+    opacity: 0;
+    animation: fadeInMsg 0.4s ease forwards;
+  }
+
+  @keyframes fadeInMsg {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .message-row.user {
+    flex-direction: row-reverse;
+  }
+
+  /* Avatars */
+  .avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  }
+
+  .avatar.bot {
+    background: linear-gradient(135deg, #fff, #f3f4f6);
+    border: 1px solid #e5e7eb;
+  }
+
+  .avatar.user {
+    background: var(--primary-gradient);
+    color: white;
+  }
+
+  /* Bubbles */
+  .chat-bubble {
+    max-width: 70%;
+    padding: 1rem 1.5rem;
+    font-size: 1rem;
+    line-height: 1.6;
+    position: relative;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+  }
+
+  .message-row.bot .chat-bubble {
+    background: var(--chat-bg-bot);
+    color: var(--text-bot);
+    border-radius: 20px 20px 20px 4px;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+  }
+
+  .message-row.user .chat-bubble {
+    background: var(--chat-bg-user);
+    color: var(--text-user);
+    border-radius: 20px 20px 4px 20px;
+    box-shadow: 0 8px 16px -4px rgba(99, 102, 241, 0.3);
+  }
+
+  /* Code Blocks inside Bot Messages */
+  .chat-bubble pre {
+    background: #1e293b;
+    color: #e2e8f0;
+    padding: 1rem;
+    border-radius: 12px;
+    overflow-x: auto;
+    margin-top: 0.8rem;
+    font-size: 0.9em;
+  }
+
+  .chat-bubble code {
+    font-family: 'Courier New', monospace;
+  }
+
+  /* Lists inside Bot Messages */
+  .chat-bubble ul,
+  .chat-bubble ol {
+    margin-left: 1.2rem;
+    margin-top: 0.5rem;
+  }
+
+  .chat-bubble li {
+    margin-bottom: 0.3rem;
+  }
+
+  /* --- Input Area --- */
+  .chat-footer {
+    padding: 1.5rem;
+    background: rgba(255, 255, 255, 0.8);
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
+  }
+
+  .input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 20px;
+    padding: 0.5rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+    transition: all 0.3s;
+  }
+
+  .input-wrapper:focus-within {
+    border-color: #a78bfa;
+    box-shadow: 0 0 0 4px rgba(167, 139, 250, 0.1);
+  }
+
+  .chat-textarea {
+    flex-grow: 1;
+    border: none;
+    resize: none;
+    padding: 0.8rem 1rem;
+    max-height: 120px;
+    font-size: 1rem;
+    background: transparent;
+    border-radius: 16px;
+  }
+
+  .chat-textarea:focus {
+    outline: none;
+  }
+
+  .btn-send {
+    width: 45px;
+    height: 45px;
+    border: none;
+    border-radius: 50%;
+    background: var(--primary-gradient);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    flex-shrink: 0;
+    margin-bottom: 2px;
+  }
+
+  .btn-send:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+  }
+
+  /* Typing Indicator (Hidden by default) */
+  #typing-indicator {
+    display: none;
+    margin-left: 3.5rem;
+    /* Align with text */
+    margin-bottom: 1rem;
+    font-style: italic;
+    color: #94a3b8;
+    font-size: 0.9rem;
+    animation: pulseText 1.5s infinite;
+  }
+
+  @keyframes pulseText {
+
+    0%,
+    100% {
+      opacity: 0.5;
+    }
+
+    50% {
+      opacity: 1;
+    }
+  }
+
+  /* Tablet adjustments */
+  @media (max-width: 991px) {
+    .chat-card {
+      max-width: 100%;
+      margin: 0 1rem;
+    }
+
+    .chat-header p {
+      font-size: 1rem;
+      padding: 0 1rem;
+    }
+  }
+
+  /* Mobile adjustments */
+  @media (max-width: 768px) {
+    .page-wrapper {
+      padding-bottom: 1rem;
+    }
+
+    .container.pt-4 {
+      padding-top: 0.5rem !important;
+      padding-left: 0.5rem;
+      padding-right: 0.5rem;
+    }
+
+    /* Header - stack elements vertically */
+    .chat-header {
+      margin-bottom: 1rem;
+      padding: 0 0.5rem;
+    }
+
+    .chat-header h2 {
+      font-size: 1.25rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .chat-header p {
+      font-size: 0.85rem;
+      margin-bottom: 0.5rem;
+    }
+
+    /* Move Clear Chat button below header */
+    .header-actions {
+      position: relative;
+      right: auto;
+      top: auto;
+      justify-content: center;
+      margin-top: 0.75rem;
+    }
+
+    .btn-clear {
+      font-size: 0.8rem;
+      padding: 0.4rem 0.6rem;
+    }
+
+    /* Chat Card */
+    .chat-card {
+      height: calc(100vh - 220px);
+      min-height: 400px;
+      border-radius: 16px;
+      margin: 0;
+    }
+
+    /* Chat Body */
+    .chat-body {
+      padding: 1rem;
+    }
+
+    /* Messages */
+    .message-row {
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .avatar {
+      width: 28px;
+      height: 28px;
+      font-size: 0.9rem;
+    }
+
+    .chat-bubble {
+      max-width: 85%;
+      padding: 0.75rem 1rem;
+      font-size: 0.9rem;
+    }
+
+    .chat-bubble pre {
+      padding: 0.75rem;
+      font-size: 0.8em;
+    }
+
+    /* Input Area */
+    .chat-footer {
+      padding: 0.75rem;
+    }
+
+    .input-wrapper {
+      padding: 0.35rem;
+    }
+
+    .chat-textarea {
+      padding: 0.6rem 0.75rem;
+      font-size: 0.9rem;
+    }
+
+    .btn-send {
+      width: 40px;
+      height: 40px;
+      font-size: 1rem;
+    }
+
+    #typing-indicator {
+      margin-left: 2.5rem;
+      font-size: 0.8rem;
+    }
+  }
+
+  /* Small mobile */
+  @media (max-width: 480px) {
+    .chat-header h2 {
+      font-size: 1.1rem;
+    }
+
+    .chat-header p {
+      font-size: 0.8rem;
+    }
+
+    .chat-card {
+      height: calc(100vh - 200px);
+      min-height: 350px;
+      border-radius: 12px;
+    }
+
+    .chat-body {
+      padding: 0.75rem;
+    }
+
+    .avatar {
+      width: 24px;
+      height: 24px;
+      font-size: 0.8rem;
+    }
+
+    .chat-bubble {
+      max-width: 88%;
+      padding: 0.6rem 0.8rem;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    .chat-footer {
+      padding: 0.5rem;
+    }
+
+    .btn-send {
+      width: 36px;
+      height: 36px;
+    }
+
+    .btn-clear {
+      font-size: 0.75rem;
+    }
+  }
+</style>
+
+<div class="page-wrapper">
+  <div class="container pt-4">
+
+    <!-- Header -->
+    <div class="chat-header" data-aos="fade-down">
+      <div class="header-actions" data-aos="fade-left" data-aos-delay="50">
+
+        <!-- Clear Chat Button -->
+        <button id="clearChatBtn" class="btn-clear" title="Clear chat history">
+          <i class="fas fa-trash"></i> Clear Chat
+        </button>
+
+      </div>
+
+      <h2>Hey Voyager 🌍, I’m <span class="highlight">Leo</span> 🦁</h2>
+      <p>Your AI Career Compass. Ask me anything about your journey!</p>
+    </div>
+
+    <!-- Chat Card -->
+    <div class="chat-card" data-aos="fade-up" data-aos-delay="100">
+
+      <!-- Chat Body -->
+      <div class="chat-body" id="chat-body">
+
+        <!-- Welcome Message (If empty history) -->
+        {% if not messages %}
+        <div class="message-row bot">
+          <div class="avatar bot">🦁</div>
+          <div class="chat-bubble">
+            Hey there! 👋 I'm all ears. Ready to help you navigate your career path, resume, or skills. What's on your
+            mind today? 🚀
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Message Loop -->
+        {% for message in messages %}
+        <div class="message-row user">
+          <div class="avatar user"><i class="fas fa-user"></i></div>
+          <div class="chat-bubble">{{ message.prompt }}</div>
+        </div>
+
+        <div class="message-row bot">
+          <div class="avatar bot">🦁</div>
+          <div class="chat-bubble">{{ message.response|safe }}</div>
+        </div>
+        {% endfor %}
+
+        <!-- Typing Indicator -->
+        <div id="typing-indicator">
+          Leo is thinking... <i class="fas fa-pen-nib"></i>
+        </div>
+
+      </div>
+
+      <!-- Input Area -->
+      <div class="chat-footer">
+        <form id="chat-form" method="post" action="/your-career_coach-leo011">
+          <div class="input-wrapper">
+            <textarea id="userQuery" name="userQuery" class="chat-textarea" placeholder="Ask Leo anything..." rows="1"
+              required></textarea>
+            <button type="submit" class="btn-send" title="Send Message">
+              <i class="fas fa-paper-plane"></i>
+            </button>
+          </div>
+        </form>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- AOS Script -->
+<script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+
+<script>
+  AOS.init({ duration: 800, once: true });
+
+  // SWEETALERT POPUP FOR CLEAR CHAT
+  document.getElementById('clearChatBtn').addEventListener('click', function () {
+    Swal.fire({
+      title: 'Clear all chat history?',
+      text: 'This action cannot be undone.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#6366f1',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Yes, clear it',
+      backdrop: true
+    }).then((result) => {
+      if (result.isConfirmed) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/your-career_coach-leo011/clear';
+        document.body.appendChild(form);
+        form.submit();
+      }
+    });
+  });
+
+  document.addEventListener('DOMContentLoaded', function () {
+    const chatBody = document.getElementById('chat-body');
+    const textarea = document.getElementById('userQuery');
+    const form = document.getElementById('chat-form');
+    const typingIndicator = document.getElementById('typing-indicator');
+
+    function scrollToBottom() {
+      chatBody.scrollTop = chatBody.scrollHeight;
+    }
+    scrollToBottom();
+
+    textarea.addEventListener('input', function () {
+      this.style.height = 'auto';
+      this.style.height = (this.scrollHeight) + 'px';
+    });
+
+    form.addEventListener('submit', function () {
+      typingIndicator.style.display = 'block';
+      scrollToBottom();
+    });
+
+    textarea.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        if (this.value.trim() !== "") {
+          form.dispatchEvent(new Event('submit'));
+          form.submit();
+        }
+      }
+    });
+  });
+</script>
+
+{% endblock %}

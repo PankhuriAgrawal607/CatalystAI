@@ -1,0 +1,756 @@
+{% extends 'base.html' %}
+
+{% block title %}
+AI Tutor - {{ topic }}
+{% endblock %}
+
+{% block content %}
+<!-- AOS Animation Library -->
+<link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+
+<style>
+    /* --- Modern Design System --- */
+    :root {
+        --primary-start: #6366f1;
+        --primary-end: #a78bfa;
+        --primary-gradient: linear-gradient(135deg, var(--primary-start), var(--primary-end));
+        
+        --glass-bg: rgba(255, 255, 255, 0.7);
+        --glass-border: rgba(255, 255, 255, 0.5);
+        --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+        
+        --text-main: #1e293b;
+        --text-muted: #64748b;
+        
+        --chat-bg-user: var(--primary-gradient);
+        --chat-bg-bot: #ffffff;
+        --text-user: #ffffff;
+        --text-bot: #1e293b;
+    }
+
+    /* Animated Background */
+    body {
+        background: linear-gradient(120deg, #fdfbfb 0%, #ebedee 100%);
+        min-height: 100vh;
+    }
+
+    .page-wrapper {
+        position: relative;
+        overflow-x: hidden;
+        padding-bottom: 2rem;
+    }
+
+    /* Background Blobs */
+    .page-wrapper::before {
+        content: '';
+        position: absolute;
+        width: 600px;
+        height: 600px;
+        background: radial-gradient(circle, rgba(99,102,241,0.15) 0%, rgba(0,0,0,0) 70%);
+        top: -100px;
+        left: -200px;
+        z-index: -1;
+        animation: floatBlob 10s infinite alternate;
+    }
+    .page-wrapper::after {
+        content: '';
+        position: absolute;
+        width: 500px;
+        height: 500px;
+        background: radial-gradient(circle, rgba(167,139,250,0.15) 0%, rgba(0,0,0,0) 70%);
+        bottom: 0;
+        right: -150px;
+        z-index: -1;
+        animation: floatBlob 10s infinite alternate-reverse;
+    }
+
+    @keyframes floatBlob {
+        0% { transform: translate(0, 0); }
+        100% { transform: translate(50px, 50px); }
+    }
+
+    /* --- Cards (Glassmorphism) --- */
+    .glass-card {
+        background: var(--glass-bg);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid var(--glass-border);
+        border-radius: 20px;
+        box-shadow: var(--glass-shadow);
+        overflow: hidden;
+    }
+
+    .glass-header {
+        background: rgba(255,255,255,0.5);
+        padding: 1.25rem 1.5rem;
+        border-bottom: 1px solid rgba(0,0,0,0.05);
+        font-weight: 700;
+        color: var(--text-main);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    
+    .glass-header i { color: #6366f1; margin-right: 10px; }
+
+    /* --- Sidebar Info --- */
+    .info-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-muted);
+        margin-bottom: 0.25rem;
+        font-weight: 600;
+    }
+    
+    .badge-modern {
+        background: white;
+        border: 1px solid #e2e8f0;
+        color: #475569;
+        padding: 0.4em 0.8em;
+        border-radius: 50px;
+        font-weight: 500;
+        font-size: 0.85rem;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.03);
+    }
+
+    /* --- Tabs & Resources --- */
+    .modern-tabs .nav-link {
+        color: var(--text-muted);
+        border: none;
+        font-weight: 600;
+        padding: 1rem;
+        position: relative;
+        transition: all 0.3s;
+        background: transparent;
+    }
+    
+    .modern-tabs .nav-link.active {
+        color: #6366f1;
+        background: transparent;
+    }
+    
+    .modern-tabs .nav-link.active::after {
+        content: '';
+        position: absolute;
+        bottom: 0; left: 20%; right: 20%;
+        height: 3px;
+        background: var(--primary-gradient);
+        border-radius: 10px 10px 0 0;
+    }
+
+    .resource-item {
+        background: white;
+        border-radius: 12px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        border: 1px solid #f1f5f9;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .resource-item:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+        border-color: #e0e7ff;
+    }
+
+    /* --- Chat Interface --- */
+    .chat-container {
+        height: 600px;
+        overflow-y: auto;
+        padding: 1.5rem;
+        scroll-behavior: smooth;
+        background: rgba(255,255,255,0.4);
+    }
+    
+    /* Scrollbar */
+    .chat-container::-webkit-scrollbar { width: 6px; }
+    .chat-container::-webkit-scrollbar-track { background: transparent; }
+    .chat-container::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+    /* Message Rows */
+    .message-row {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        align-items: flex-end;
+        opacity: 0;
+        animation: fadeInMsg 0.4s ease forwards;
+    }
+
+    @keyframes fadeInMsg {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .message-row.user { flex-direction: row-reverse; }
+
+    /* Avatars */
+    .avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+        flex-shrink: 0;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+
+    .avatar.ai { background: white; color: #6366f1; border: 1px solid #e0e7ff; }
+    .avatar.user { background: var(--primary-gradient); color: white; }
+
+    /* Bubbles */
+    .chat-bubble {
+        max-width: 80%;
+        padding: 1rem 1.25rem;
+        font-size: 0.95rem;
+        line-height: 1.6;
+        position: relative;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        word-wrap: break-word;
+    }
+
+    .message-row.ai .chat-bubble {
+        background: var(--chat-bg-bot);
+        color: var(--text-bot);
+        border-radius: 18px 18px 18px 4px;
+        border: 1px solid rgba(255,255,255,0.8);
+    }
+
+    .message-row.user .chat-bubble {
+        background: var(--chat-bg-user);
+        color: var(--text-user);
+        border-radius: 18px 18px 4px 18px;
+        box-shadow: 0 8px 16px -4px rgba(99, 102, 241, 0.3);
+    }
+
+    /* Markdown Styles in Chat */
+    .chat-bubble pre {
+        background: #1e293b;
+        color: #e2e8f0;
+        padding: 1rem;
+        border-radius: 12px;
+        overflow-x: auto;
+        margin: 0.8rem 0;
+        font-size: 0.9em;
+    }
+    .chat-bubble code { font-family: 'Courier New', monospace; background: rgba(0,0,0,0.1); padding: 2px 4px; border-radius: 4px; }
+    .chat-bubble ul, .chat-bubble ol { margin-left: 1.2rem; margin-top: 0.5rem; }
+    .chat-bubble a { color: inherit; text-decoration: underline; }
+
+    /* Input Area */
+    .chat-input-area {
+        padding: 1.25rem;
+        background: rgba(255,255,255,0.8);
+        border-top: 1px solid rgba(0,0,0,0.05);
+    }
+
+    .input-group-modern {
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 50px;
+        padding: 0.3rem 0.5rem 0.3rem 1.2rem;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+        transition: all 0.3s;
+        display: flex;
+        align-items: center;
+    }
+
+    .input-group-modern:focus-within {
+        border-color: #a78bfa;
+        box-shadow: 0 0 0 4px rgba(167, 139, 250, 0.1);
+    }
+
+    .chat-input {
+        border: none;
+        flex-grow: 1;
+        font-size: 1rem;
+        outline: none;
+        background: transparent;
+    }
+
+    .btn-send {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        border: none;
+        background: var(--primary-gradient);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: transform 0.2s;
+    }
+    .btn-send:hover { transform: scale(1.1); }
+
+    /* Typing Indicator */
+    .typing-indicator {
+        display: flex;
+        gap: 4px;
+        padding: 4px 8px;
+    }
+    .typing-dot {
+        width: 6px; height: 6px;
+        background: #94a3b8;
+        border-radius: 50%;
+        animation: bounce 1.4s infinite ease-in-out;
+    }
+    .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+    .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+    
+    @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+
+    /* Loading Spinner */
+    .loading-spinner {
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        padding: 2rem; color: var(--text-muted);
+    }
+</style>
+
+<div class="page-wrapper">
+    <div class="container-fluid my-4 px-4">
+        <div class="row g-4">
+            
+            <!-- Left Column: Module Info & Resources -->
+            <div class="col-lg-4 col-xl-3" data-aos="fade-right">
+                
+                <!-- Module Info Card -->
+                <div class="glass-card mb-4">
+                    <div class="glass-header">
+                        <span><i class="fas fa-layer-group"></i> Module Info</span>
+                    </div>
+                    <div class="p-4">
+                        <h5 class="fw-bold text-dark mb-2">{{ phase.name }}</h5>
+                        <div class="mb-3">
+                            <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2 rounded-pill">
+                                <i class="far fa-calendar me-1"></i> Week {{ module.week }}
+                            </span>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="info-label">Learning Objectives</div>
+                            <ul class="list-unstyled small text-muted">
+                                {% for objective in module.learning_objectives %}
+                                <li class="mb-2 d-flex"><i class="fas fa-check text-success me-2 mt-1"></i> {{ objective }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+
+                        <div>
+                            <div class="info-label">Skills</div>
+                            <div class="d-flex flex-wrap gap-2">
+                                {% for skill in phase.skills %}
+                                <span class="badge-modern">{{ skill }}</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <hr class="my-4 opacity-10">
+
+                        <a href="{{ url_for('roadmap_bp.roadmap') }}" class="btn btn-light w-100 mb-2 rounded-pill fw-bold" style="color: #64748b;">
+                            <i class="fas fa-arrow-left me-2"></i> Back to Roadmap
+                        </a>
+                        <button class="btn btn-danger bg-opacity-10 text-danger border-0 w-100 rounded-pill fw-bold" id="btnClearChat">
+                            <i class="fas fa-trash-alt me-2"></i> Clear History
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Resources Card -->
+                <div class="glass-card">
+                    <div class="glass-header">
+                        <span><i class="fas fa-book-reader"></i> Resources</span>
+                        <button class="btn btn-sm btn-link text-primary p-0" id="btnRefreshResources" title="Refresh">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                    
+                    <ul class="nav nav-pills nav-fill modern-tabs" id="resourceTabs" role="tablist">
+                        <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#videos">Videos</button></li>
+                        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#papers">Papers</button></li>
+                        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#web">Web</button></li>
+                    </ul>
+
+                    <div class="tab-content p-3" style="max-height: 400px; overflow-y: auto;">
+                        <!-- Videos -->
+                        <div class="tab-pane fade show active" id="videos">
+                            <div class="loading-spinner" id="videosLoading">
+                                <div class="spinner-border text-primary spinner-border-sm mb-2"></div>
+                                <small>Finding videos...</small>
+                            </div>
+                            <div id="videosList"></div>
+                        </div>
+                        <!-- Papers -->
+                        <div class="tab-pane fade" id="papers">
+                            <div class="loading-spinner" id="papersLoading">
+                                <div class="spinner-border text-primary spinner-border-sm mb-2"></div>
+                                <small>Searching papers...</small>
+                            </div>
+                            <div id="papersList"></div>
+                        </div>
+                        <!-- Web -->
+                        <div class="tab-pane fade" id="web">
+                            <div class="loading-spinner" id="webLoading">
+                                <div class="spinner-border text-primary spinner-border-sm mb-2"></div>
+                                <small>Searching web...</small>
+                            </div>
+                            <div id="webList"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: AI Chat -->
+            <div class="col-lg-8 col-xl-9" data-aos="fade-left">
+                <div class="glass-card h-100 d-flex flex-column">
+                    <div class="glass-header py-3">
+                        <span><i class="fas fa-robot"></i> AI Tutor <span class="text-muted fw-normal mx-2">|</span> <small class="text-muted">{{ topic }}</small></span>
+                    </div>
+                    
+                    <div id="chatContainer" class="chat-container">
+                        {% if chat_history|length > 0 %}
+                            {% for message in chat_history %}
+                            <div class="message-row {{ 'user' if message.role == 'user' else 'ai' }}">
+                                <div class="avatar {{ 'user' if message.role == 'user' else 'ai' }}">
+                                    <i class="fas {{ 'fa-user' if message.role == 'user' else 'fa-robot' }}"></i>
+                                </div>
+                                <div class="chat-bubble message-content" data-raw="{{ message.content }}">
+                                    {{ message.content|safe }}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="message-row ai">
+                                <div class="avatar ai"><i class="fas fa-robot"></i></div>
+                                <div class="chat-bubble">
+                                    <p class="mb-2">👋 <strong>Hi there! I'm your AI Tutor for this module.</strong></p>
+                                    <p class="mb-0">I can help you understand the concepts, answer questions, or quiz you. What would you like to start with?</p>
+                                </div>
+                            </div>
+                        {% endif %}
+                        
+                        <!-- Hidden Typing Indicator -->
+                        <div id="typingIndicator" class="message-row ai d-none">
+                            <div class="avatar ai"><i class="fas fa-robot"></i></div>
+                            <div class="chat-bubble">
+                                <div class="typing-indicator">
+                                    <div class="typing-dot"></div>
+                                    <div class="typing-dot"></div>
+                                    <div class="typing-dot"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="chat-input-area">
+                        <form id="chatForm" class="input-group-modern">
+                            <input type="text" id="messageInput" class="chat-input" placeholder="Ask a question..." autocomplete="off" required>
+                            <button type="submit" class="btn-send">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- AOS JS -->
+<script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+<!-- Highlight.js for code blocks -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+
+<script>
+    AOS.init({ duration: 800, once: true });
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const messageInput = document.getElementById('messageInput');
+        const chatForm = document.getElementById('chatForm');
+        const chatContainer = document.getElementById('chatContainer');
+        const typingIndicator = document.getElementById('typingIndicator');
+        const btnClearChat = document.getElementById('btnClearChat');
+        const btnRefreshResources = document.getElementById('btnRefreshResources');
+
+        // Phase and module IDs for API calls
+        const phaseId = '{{ phase_id }}';
+        const moduleId = '{{ module_id }}';
+        const topic = '{{ topic }}';
+
+        // Scroll chat to bottom
+        function scrollToBottom() {
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+        
+        // --- FIXED MARKDOWN FORMATTING FUNCTION ---
+        function formatMessage(message) {
+            if (!message) return '';
+
+            let html = message;
+
+            // 1. Handle code blocks (must run first)
+            html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (match, language, code) => {
+                const lang = language || 'plaintext';
+                const escapedCode = code.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                return `<pre><code class="language-${lang}">${escapedCode.trim()}</code></pre>`;
+            });
+
+            // 2. Handle unordered lists
+            html = html.replace(/^(?:- (.*))(?:\n(?:- (.*)))*/gm, (match) => {
+                const items = match.split('\n').map(item => `<li>${item.substring(2)}</li>`).join('');
+                return `<ul>${items}</ul>`;
+            });
+
+            // 3. Handle ordered lists
+            html = html.replace(/^(?:\d+\. (.*))(?:\n(?:\d+\. (.*)))*/gm, (match) => {
+                const items = match.split('\n').map(item => `<li>${item.replace(/^\d+\. /, '')}</li>`).join('');
+                return `<ol>${items}</ol>`;
+            });
+            
+            // 4. Handle headers (h3, h4)
+            html = html.replace(/^### (.*?)$/gm, '<h3>$1</h3>');
+            html = html.replace(/^#### (.*?)$/gm, '<h4>$1</h4>');
+
+            // 5. Handle bold and italic
+            html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+
+            // 6. Handle inline code
+            html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+            // 7. Handle line breaks (only remaining newlines)
+            html = html.replace(/\n/g, '<br>');
+
+            return html;
+        }
+        
+        // Function to highlight code
+        function highlightAllCode() {
+            if (typeof hljs !== 'undefined') {
+                document.querySelectorAll('pre code').forEach((block) => {
+                    hljs.highlightElement(block);
+                });
+            }
+        }
+        
+        // When rendering existing chat history, format all messages
+        document.querySelectorAll('.message-content').forEach(function (el) {
+            if (el.getAttribute('data-formatted') !== 'true') {
+                const content = el.innerHTML;
+                el.innerHTML = formatMessage(content.trim()); // Trim whitespace
+                el.setAttribute('data-formatted', 'true');
+            }
+        });
+        highlightAllCode(); // Highlight existing code
+
+        // Scroll to bottom and load resources on init
+        scrollToBottom();
+        loadResources();
+
+        // Handle chat form submission
+        chatForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            const message = messageInput.value.trim();
+            if (!message) return;
+            
+            addMessageToChat('user', message);
+            messageInput.value = '';
+            typingIndicator.classList.remove('d-none');
+            scrollToBottom();
+
+            fetch('/api/tutor/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: message,
+                    phase_id: phaseId,
+                    module_id: moduleId
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                typingIndicator.classList.add('d-none');
+                if (data.status === 'success') {
+                    addMessageToChat('assistant', data.response);
+                } else {
+                    addMessageToChat('assistant', 'Sorry, I encountered an error. Please try again.');
+                    console.error('Error:', data.message);
+                }
+            })
+            .catch(error => {
+                typingIndicator.classList.add('d-none');
+                addMessageToChat('assistant', 'Sorry, I encountered an error. Please try again.');
+                console.error('Error:', error);
+            });
+        });
+
+        // Add message to chat
+        function addMessageToChat(role, content) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('chat-message', role === 'user' ? 'user-message' : 'ai-message');
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.classList.add('message-content');
+            contentDiv.innerHTML = formatMessage(content); // Format new message
+            
+            const timestampDiv = document.createElement('div');
+            timestampDiv.classList.add('message-timestamp');
+            
+            const now = new Date();
+            const formattedDate = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getDate().toString().padStart(2, '0')} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+            timestampDiv.textContent = formattedDate;
+
+            messageDiv.appendChild(contentDiv);
+            messageDiv.appendChild(timestampDiv);
+            chatContainer.appendChild(messageDiv);
+            
+            highlightAllCode(); // Highlight new code blocks
+            scrollToBottom();
+        }
+
+        // Clear chat history
+        btnClearChat.addEventListener('click', function () {
+            if (confirm('Are you sure you want to clear the chat history? This cannot be undone.')) {
+                fetch('/api/tutor/clear-history', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        phase_id: phaseId,
+                        module_id: moduleId
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        chatContainer.innerHTML = '';
+                        const welcomeMessage = `
+                            <p>👋 Hi there! I'm your AI tutor for <strong>${topic}</strong>.</p>
+                            <p>I'm here to help you understand the concepts, answer your questions, and guide you through this learning module. What would you like to learn about today?</p>
+                        `;
+                        addMessageToChat('assistant', welcomeMessage);
+                    } else {
+                        alert('Error clearing chat history: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error clearing chat history');
+                });
+            }
+        });
+
+        // --- Load resources function ---
+        function loadResources() {
+            // Show loading spinners
+            document.getElementById('videosLoading').classList.remove('d-none');
+            document.getElementById('papersLoading').classList.remove('d-none');
+            document.getElementById('webLoading').classList.remove('d-none');
+            
+            // Clear previous resources
+            document.getElementById('videosList').innerHTML = '';
+            document.getElementById('papersList').innerHTML = '';
+            document.getElementById('webList').innerHTML = '';
+
+            fetch(`/api/tutor/resources?topic=${encodeURIComponent(topic)}&type=all`)
+                .then(response => {
+                    if (!response.ok) { throw new Error(`HTTP error! status: ${response.status}`); }
+                    return response.json();
+                })
+                .then(data => {
+                    // Hide loading spinners
+                    document.getElementById('videosLoading').classList.add('d-none');
+                    document.getElementById('papersLoading').classList.add('d-none');
+                    document.getElementById('webLoading').classList.add('d-none');
+
+                    if (data.status === 'success') {
+                        // Populate videos
+                        const videosList = document.getElementById('videosList');
+                        if (data.resources.youtube && data.resources.youtube.length > 0) {
+                            data.resources.youtube.forEach(video => {
+                                videosList.innerHTML += `
+                                    <div class="card resource-card">
+                                        <img src="${video.thumbnail}" class="video-thumbnail" alt="${video.title}">
+                                        <div class="card-body">
+                                            <h6 class="card-title">${video.title}</h6>
+                                            <div class="resource-meta">
+                                                <i class="fas fa-user"></i> ${video.channelTitle}
+                                            </div>
+                                            <a href="${video.url}" target="_blank" class="btn btn-sm btn-outline-primary mt-2">Watch</a>
+                                        </div>
+                                    </div>
+                                `;
+                            });
+                        } else {
+                            videosList.innerHTML = '<p class="text-muted p-3">No videos found</p>';
+                        }
+
+                        // Populate papers
+                        const papersList = document.getElementById('papersList');
+                        if (data.resources.papers && data.resources.papers.length > 0) {
+                            data.resources.papers.forEach(paper => {
+                                let authorsText = (paper.authors && Array.isArray(paper.authors)) ? paper.authors.join(', ') : 'Unknown';
+                                papersList.innerHTML += `
+                                    <div class="card resource-card">
+                                        <div class="card-body">
+                                            <h6 class="card-title">${paper.title}</h6>
+                                            <div class="resource-meta">
+                                                <i class="fas fa-users"></i> ${authorsText}
+                                                <br>
+                                                <i class="fas fa-calendar"></i> ${paper.year}
+                                                <i class="fas fa-quote-right ms-2"></i> ${paper.citations} citations
+                                            </div>
+                                            <a href="${paper.url}" target="_blank" class="btn btn-sm btn-outline-primary mt-2">Read Paper</a>
+                                        </div>
+                                    </div>
+                                `;
+                            });
+                        } else {
+                            papersList.innerHTML = '<p class="text-muted p-3">No papers found</p>';
+                        }
+
+                        // Populate web resources
+                        const webList = document.getElementById('webList');
+                        if (data.resources.web && data.resources.web.length > 0) {
+                            data.resources.web.forEach(resource => {
+                                webList.innerHTML += `
+                                    <div class="card resource-card">
+                                        <div class="card-body">
+                                            <h6 class="card-title">${resource.title}</h6>
+                                            <p class="small">${resource.snippet}</p>
+                                            <div class="resource-meta">
+                                                <i class="fas fa-globe"></i> ${resource.displayLink}
+                                            </div>
+                                            <a href="${resource.link}" target="_blank" class="btn btn-sm btn-outline-primary mt-2">Visit</a>
+                                        </div>
+                                    </div>
+                                `;
+                            });
+                        } else {
+                            webList.innerHTML = '<p class="text-muted p-3">No web resources found</p>';
+                        }
+                    } else {
+                        throw new Error(data.message || 'API returned an error');
+                    }
+                })
+                .catch(error => {
+                    console.error("Fetch error:", error);
+                    document.getElementById('videosLoading').classList.add('d-none');
+                    document.getElementById('papersLoading').classList.add('d-none');
+                    document.getElementById('webLoading').classList.add('d-none');
+                    
+                    const errorMsg = `<p class="text-danger p-3">Error loading resources: ${error.message}</p>`;
+                    document.getElementById('videosList').innerHTML = errorMsg;
+                    document.getElementById('papersList').innerHTML = errorMsg;
+                    document.getElementById('webList').innerHTML = errorMsg;
+                });
+        }
+
+        // Refresh resources button
+        btnRefreshResources.addEventListener('click', loadResources);
+    });
+</script>
+{% endblock %}
