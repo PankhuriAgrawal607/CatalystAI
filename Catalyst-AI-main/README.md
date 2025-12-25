@@ -76,7 +76,7 @@ Catalyst AI addresses these challenges by providing AI-powered personalized lear
 1. Clone the repository
 
 ```bash
-git clone https://github.com/devanshx72/Catalyst AI.git
+git clone https://github.com/PankhuriAgrawal607/Catalyst AI.git
 cd Catalyst AI
 ```
 
